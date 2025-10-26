@@ -40,8 +40,8 @@ jobs:
       # Step 4: Run the build script, pointing it to the extracted dependencies
       - name: Build all patch JARs
         run: |
-          # Override BASE_DIR to point to our temporary dependency directory
-          BASE_DIR=build_env bash build.sh
+          # Override SEDRE_INSTALL_DIR to point to our temporary dependency directory
+          SEDRE_INSTALL_DIR=build_env bash build.sh
 
       # Step 5: Prepare assets for the release ZIP file
       - name: Prepare Release Assets
