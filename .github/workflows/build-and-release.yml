@@ -1,0 +1,78 @@
+name: Build and Release Patches
+
+# This action runs on every push to a tag that looks like a version (e.g., v1.0.0)
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      release_description:
+        description: 'Release description (Markdown)'
+        required: false
+        default: 'Manually triggered release'
+      draft:
+        description: 'Create draft release? (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Check out the repository code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up JDK 8
+      - name: Set up JDK 8
+        uses: actions/setup-java@v3
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+
+      # Step 3: Download and Extract Dependencies
+      - name: Download and Extract Build Dependencies
+        run: |
+          wget -O sedre-libs.zip "https://github.com/iwconfig/sedre-mods/releases/download/dependencies/sedre-libs.zip"
+          unzip sedre-libs.zip -d build_env
+          
+      # Step 4: Run the build script, pointing it to the extracted dependencies
+      - name: Build all patch JARs
+        run: |
+          # Override BASE_DIR to point to our temporary dependency directory
+          BASE_DIR=build_env bash build.sh
+
+      # Step 5: Prepare assets for the release ZIP file
+      - name: Prepare Release Assets
+        run: |
+          # Use a static name for the release zip file
+          RELEASE_ZIP_NAME="sedre-patches.zip"
+          
+          echo "Creating release package: ${RELEASE_ZIP_NAME}"
+          
+          mkdir -p release-package/Resources/Sdr/WEB-INF/lib
+          mkdir -p release-package/Properties/extconf
+          
+          # Copy the built JARs
+          ln *.jar release-package/Resources/Sdr/WEB-INF/lib/
+          
+          # Copy the template and rename it to the final name for the easy-install zip
+          cp discs.properties.template release-package/Properties/extconf/discs.properties
+          
+          # Create the final ZIP file
+          (cd release-package && zip -r "../${RELEASE_ZIP_NAME}" .)
+          
+          # Store the static ZIP name for the next step
+          echo "RELEASE_ZIP_NAME=${RELEASE_ZIP_NAME}" >> $GITHUB_ENV
+
+      # Step 6: Create the GitHub Release and upload all assets
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          # This makes the release public immediately.
+          draft: ${{ github.event.inputs.draft }}
+          body: ${{ github.event.inputs.release_description }}
+          files: |
+            *.jar
+            ${{ env.RELEASE_ZIP_NAME }}

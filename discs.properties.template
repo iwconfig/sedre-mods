@@ -1,0 +1,7 @@
+# Paths to the root of each SEDRE disc.
+# Use drive letters (e.g., E:/) or UNC paths (e.g., //server/share/sedre_disc_1/).
+# Use forward slashes, even on Windows.
+
+disc.1=E:/
+disc.2=//server/share/sedre_disc_2/
+# Add disc.3, disc.4, etc., as needed.
