@@ -34,9 +34,8 @@ jobs:
       # Step 3: Download and Extract Dependencies
       - name: Download and Extract Build Dependencies
         run: |
-          wget -O sedre-libs.zip "https://github.com/iwconfig/sedre-mods/releases/download/dependencies/sedre-libs.zip"
-          unzip sedre-libs.zip -d build_env
-          
+          wget -O- "${{ vars.SEDRE_LIBS_ZIP_URL }}" | { mkdir -p build_env && cd $_ && jar xv ;}
+
       # Step 4: Run the build script, pointing it to the extracted dependencies
       - name: Build all patch JARs
         run: |
