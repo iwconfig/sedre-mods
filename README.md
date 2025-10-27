@@ -28,7 +28,8 @@ These patches are applied through the use of what is known as "class shadowing",
 
 ## Installation
 
-_NOTE: The directory "SEDRE_INSTALL_DIR" mentioned here is referring to either "SEDREAC" (Citroen) or "SEDREAP" (Peugeot), depending on what you've installed._
+> [!NOTE]  
+> The directory "SEDRE_INSTALL_DIR" mentioned here is referring to either "SEDREAC" (Citroen) or "SEDREAP" (Peugeot).
 
 1. **Build or download the latest patches**
 
@@ -86,7 +87,7 @@ The JARs need place them in `/path/to/your/SEDRE_INSTALL_DIR/Resources/Sdr/WEB-I
 ### Prerequisites
 
 - A Unix-like environment (e.g. Linux, WSL, BSD, macOS). Possibly git bash or cygwin will also work.
-- A Java Development Kit (JDK) compatible with Java 1.4 source/target. **OpenJDK 8** is recommended and known to work.
+- A Java Development Kit (JDK) compatible with Java 1.4 source/target. **OpenJDK 8** is the last version of OpenJDK to support this.
 - The original SEDRE application directory structure available, as the build script needs to reference its libraries for compilation.
 
 ### Building (\*nix)
@@ -129,31 +130,75 @@ If you don't have a local JDK 8 environment, you can use Docker to build the pat
 
 ```bash
 # Clone the repository first, then from inside the project directory, run:
-docker run --rm -it -v "$(pwd)":/work openjdk:8-slim bash -c "cd /work && bash build.sh"
+docker run --rm -it -v "$(pwd)":/work -v /path/to/your/SEDRE/installation/dir:/SEDRE:ro openjdk:8-slim bash -c "cd /work && bash build.sh"
 ```
 
-This command mounts your current project directory into the container, runs the build script, and leaves the resulting JAR files in your local project directory.
+This command mounts your current project directory and the SEDRE installation dir into the container, runs the build script, and leaves the resulting JAR files in your local project directory. It requires you to have SEDRE already installed. If you don't have it on hand you can download a zip file of the build environment [here](https://gist.github.com/iwconfig/4893ddcc35bf5802a02a85b0eb85fbbe/raw/sedre-libs.zip), or check the [the instructions below](#or-alternatively-provide-the-build-env-by-downloading-a-zip-archive-of-the-sedre-libs).
 
 #### One-shot docker run that does it all
 
 ```bash
-docker run --rm -i -v "$(pwd)":/work openjdk:8-slim bash -s <<EOF
+docker run --rm -i -w /repo -v "$(pwd)":/jars -v /path/to/your/SEDRE/installation/dir:/SEDRE:ro openjdk:8-slim bash -s <<EOF
 set -ve
-# [Docker container]: Installing wget.
-apt update; apt install wget -y
+# Installing wget.
+apt update; apt install -y wget
 
-# [Docker container]: Downloading repo, unpacking and changing
-#                     current working directory to /repo.
-wget https://github.com/iwconfig/sedre-mods/archive/refs/heads/main.tar.gz | tar vxf -
-cd main
+# Downloading and unpacking repo.
+wget -O- https://github.com/iwconfig/sedre-mods/archive/refs/heads/main.tar.gz | tar vxzf - --strip-components=1
 
-# [Docker container]: Starting the build process.
-bash build.sh
+# Starting the build process.
+SEDRE_INSTALL_DIR=/SEDRE bash build.sh
 
-# [Docker container]: Moving jars to your bind mount.
-mv -v *.jar /work
+# Moving jars to your bind mount.
+mv -v *.jar /jars
 
-# [Docker container]: All done. Bon voyage!
+# All done. Bon voyage!
+EOF
+```
+
+##### or alternatively provide the build env by downloading a zip archive of the sedre libs
+
+```bash
+docker run --rm -i -w /repo -v "$(pwd)":/jars openjdk:8-slim bash -s <<EOF
+set -ve
+# Installing wget.
+apt update; apt install -y wget
+
+# Downloading and unpacking repo.
+wget -O- https://github.com/iwconfig/sedre-mods/archive/refs/heads/main.tar.gz | tar vxzf - --strip-components=1
+
+# Downloading and unpacking build environment.
+wget -O- https://gist.github.com/iwconfig/4893ddcc35bf5802a02a85b0eb85fbbe/raw/sedre-libs.zip | { mkdir /build_env && cd \$_ && jar xv ;}
+
+# Starting the build process.
+SEDRE_INSTALL_DIR=/build_env bash build.sh
+
+# Moving jars to your bind mount.
+mv -v *.jar /jars
+
+# All done. Bon voyage!
+EOF
+```
+
+##### or to both build and install the jar files and the discs.properties.template into your SEDRE installation
+
+```bash
+docker run --rm -i -w /repo -v /path/to/your/SEDRE/installation/dir:/SEDRE openjdk:8-slim bash -s <<EOF
+set -ve
+# Installing wget.
+apt update; apt install -y wget
+
+# Downloading and unpacking repo.
+wget -O- https://github.com/iwconfig/sedre-mods/archive/refs/heads/main.tar.gz | tar vxzf - --strip-components=1
+
+# Starting the build process.
+SEDRE_INSTALL_DIR=/SEDRE bash build.sh
+
+# Installing jars and discs.properties.
+mv -v *.jar /SEDRE/Resources/Sdr/WEB-INF/lib/
+mv -v discs.properties.template /SEDRE/Properties/extconf/discs.properties
+
+# All done. Remember to edit discs.properties. Bon voyage!
 EOF
 ```
 
